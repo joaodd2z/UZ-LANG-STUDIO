@@ -1,0 +1,272 @@
+<!-- Copyright — todos os direitos reservados a Henrique -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UZ-LANG STUDIO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <canvas id="particles" aria-hidden="true"></canvas>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação lateral">
+      <div class="brand">
+        <span class="logo"></span>
+        <span class="brand-title">UZ-LANG STUDIO</span>
+      </div>
+      <nav class="nav" id="tabs" aria-label="Tabs">
+        <button class="tab" data-view="dashboard" aria-controls="view-dashboard">Dashboard</button>
+        <button class="tab" data-view="videos" aria-controls="view-videos">Vídeos</button>
+        <button class="tab" data-view="channels" aria-controls="view-channels">Canais</button>
+        <button class="tab" data-view="jobs" aria-controls="view-jobs">Jobs</button>
+        <button class="tab" data-view="transcripts" aria-controls="view-transcripts">Transcrições</button>
+        <button class="tab" data-view="translations" aria-controls="view-translations">Traduções</button>
+        <button class="tab" data-view="dubs" aria-controls="view-dubs">Dublagens</button>
+        <button class="tab" data-view="voices" aria-controls="view-voices">Vozes</button>
+        <button class="tab" data-view="library" aria-controls="view-library">Biblioteca</button>
+        <button class="tab" data-view="publish" aria-controls="view-publish">Publicação</button>
+        <button class="tab" data-view="analytics" aria-controls="view-analytics">Analytics</button>
+        <button class="tab" data-view="settings" aria-controls="view-settings">Configurações</button>
+        <!-- Novo: WP-ADMIN -->
+        <button class="tab" data-view="admin" aria-controls="view-admin">WP-ADMIN</button>
+      </nav>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="container">
+          <div class="left">
+            <h1 class="title">Plataforma</h1>
+          </div>
+          <div class="right">
+            <div id="user-info" class="user-info" aria-live="polite"></div>
+            <button id="btn-signin" class="btn btn-primary">Entrar com Google</button>
+            <button id="btn-signout" class="btn btn-ghost" hidden>Sair</button>
+          </div>
+        </div>
+      </header>
+      <main class="content container" id="content" tabindex="-1">
+        <section id="view-dashboard" class="view" hidden>
+          <div class="grid">
+            <div class="card">
+              <h2 class="h2">Bem-vindo</h2>
+              <p>Faça login, adicione um vídeo do YouTube e acompanhe o processamento de transcrição, tradução e TTS.</p>
+              <ul class="bullets">
+                <li>Transcrição: Whisper PT-BR</li>
+                <li>Tradução: EN/ES</li>
+                <li>TTS: Voz "Blast" (stub habilitável)</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h2 class="h2">Status</h2>
+              <div id="stats" class="stats"></div>
+            </div>
+            <div class="card">
+              <h2 class="h2">Retenção média por vídeo</h2>
+              <canvas id="chart-retencao" height="180" aria-label="Gráfico de retenção" role="img"></canvas>
+            </div>
+            <div class="card">
+              <h2 class="h2">Crescimento de visualizações</h2>
+              <canvas id="chart-crescimento" height="180" aria-label="Crescimento de visualizações" role="img"></canvas>
+            </div>
+            <div class="card">
+              <h2 class="h2">Distribuição de idiomas</h2>
+              <canvas id="chart-idiomas" height="180" aria-label="Distribuição de idiomas" role="img"></canvas>
+            </div>
+          </div>
+        </section>
+        <section id="view-videos" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Adicionar Vídeo</h2>
+            <form id="form-ingest" class="row" autocomplete="off">
+              <label class="field">
+                <span class="label">URL ou ID do YouTube</span>
+                <input id="youtube-input" name="url" type="text" placeholder="https://www.youtube.com/watch?v=..." required />
+              </label>
+              <button id="btn-ingest" class="btn btn-primary" type="submit">Criar Job</button>
+              <div id="ingest-msg" class="muted" role="status"></div>
+            </form>
+          </div>
+          <div class="card">
+            <h2 class="h2">Vídeos</h2>
+            <div id="videos-list" class="list"></div>
+          </div>
+        </section>
+        <section id="view-channels" class="view" hidden>
+          <div class="card" id="channel-admin" hidden>
+            <h2 class="h2">Conectar Canal</h2>
+            <form id="form-channel" class="row" autocomplete="off">
+              <label class="field">
+                <span class="label">YouTube Channel ID</span>
+                <input id="channel-id" name="channelId" type="text" placeholder="UC..." required />
+              </label>
+              <label class="field">
+                <span class="label">Título</span>
+                <input id="channel-title" name="title" type="text" placeholder="Nome do canal" required />
+              </label>
+              <button class="btn btn-primary" type="submit">Conectar</button>
+              <div id="channel-msg" class="muted" role="status"></div>
+            </form>
+          </div>
+          <div class="card">
+            <h2 class="h2">Canais</h2>
+            <div id="channels-list" class="list"></div>
+          </div>
+        </section>
+        <section id="view-jobs" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Jobs</h2>
+            <div id="jobs-list" class="list"></div>
+          </div>
+        </section>
+        <section id="view-transcripts" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Transcrições</h2>
+            <form id="form-transcript" class="row" autocomplete="off">
+              <label class="field">
+                <span class="label">YouTube ID</span>
+                <input id="transcript-id" name="videoId" type="text" placeholder="ID do vídeo" required />
+              </label>
+              <button class="btn btn-primary" type="submit">Carregar</button>
+              <div id="transcript-msg" class="muted" role="status"></div>
+            </form>
+            <div class="row">
+              <button id="btn-srt-pt" class="btn">Baixar PT.srt</button>
+              <button id="btn-srt-en" class="btn">Baixar EN.srt</button>
+              <button id="btn-srt-es" class="btn">Baixar ES.srt</button>
+              <button id="btn-txt-pt" class="btn">Baixar PT.txt</button>
+              <button id="btn-json" class="btn">Baixar JSON</button>
+              <button id="btn-tts-en" class="btn btn-primary">Gerar Voz Blast EN</button>
+              <button id="btn-tts-es" class="btn btn-primary">Gerar Voz Blast ES</button>
+            </div>
+            <textarea id="transcript-text" rows="12" placeholder="Transcrição aparecerá aqui..." style="width:100%;"></textarea>
+          </div>
+        </section>
+        <section id="view-analytics" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Analytics</h2>
+            <form id="form-analytics" class="row">
+              <label class="field">
+                <span class="label">YouTube ID</span>
+                <input id="analytics-id" type="text" placeholder="ID do vídeo" required />
+              </label>
+              <button class="btn btn-primary" type="submit">Buscar</button>
+              <span id="analytics-msg" class="muted" role="status"></span>
+            </form>
+            <canvas id="analytics-canvas" height="240" aria-label="Gráfico de retenção" role="img"></canvas>
+          </div>
+        </section>
+        <section id="view-translations" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Traduções</h2>
+            <div class="muted">Gerencie e revise traduções (PT ⇄ EN/ES). Em breve integração completa.</div>
+          </div>
+        </section>
+        <section id="view-dubs" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Dublagens</h2>
+            <div class="muted">Gere e organize dublagens (EN/ES). Em breve painel de mixagem.</div>
+          </div>
+        </section>
+        <section id="view-voices" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Vozes</h2>
+            <div class="muted">Clonagem de voz e gestão de perfis de voz. Em breve fluxo de treino.</div>
+          </div>
+        </section>
+        <section id="view-library" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Biblioteca</h2>
+            <div class="muted">Assets, áudios, legendas e arquivos do projeto.</div>
+          </div>
+        </section>
+        <section id="view-publish" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Publicação</h2>
+            <div class="muted">Integração para publicar no YouTube e gerenciar metadados. Em breve.</div>
+          </div>
+        </section>
+        <section id="view-settings" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">Configurações</h2>
+            <div class="stack">
+              <div>
+                <div class="muted">Projeto Firebase:</div>
+                <code id="cfg-project"></code>
+              </div>
+              <div>
+                <div class="muted">TTS:</div>
+                <code id="cfg-tts"></code>
+              </div>
+              <div class="alert" id="roles-alert" hidden>
+                Seu usuário ainda não possui a role necessária (editor/admin) para visualizar jobs. Peça a um admin para atualizar seu perfil em users/{uid}.roles.
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- Novo: WP-ADMIN -->
+        <section id="view-admin" class="view" hidden>
+          <div class="card">
+            <h2 class="h2">WP-ADMIN</h2>
+            <div class="row">
+              <label class="field">
+                <span class="label">Usuário</span>
+                <input id="wp-user" type="text" placeholder="Usuário" />
+              </label>
+              <label class="field">
+                <span class="label">Senha</span>
+                <input id="wp-pass" type="password" placeholder="Senha" />
+              </label>
+              <button id="btn-wp-login" class="btn btn-primary">Entrar</button>
+              <span id="wp-msg" class="muted" role="status"></span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="h3">Configurações do App</h3>
+            <div class="row">
+              <label class="field" style="flex:1">
+                <span class="label">API Base (para Electron / self-host)</span>
+                <input id="cfg-api-base" type="text" placeholder="http://localhost:5000/api" />
+              </label>
+              <label class="field" style="max-width:220px">
+                <span class="label">TTS habilitado</span>
+                <select id="cfg-tts-enabled">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </label>
+              <button id="btn-save-config" class="btn btn-primary">Salvar</button>
+              <span id="cfg-msg" class="muted" role="status"></span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="h3">Gerenciar Roles de Usuário</h3>
+            <div class="row">
+              <label class="field">
+                <span class="label">UID</span>
+                <input id="role-uid" type="text" placeholder="Firebase UID" />
+              </label>
+              <label class="field" style="flex:1">
+                <span class="label">Roles (separadas por vírgula)</span>
+                <input id="role-roles" type="text" placeholder="ex: admin,editor" />
+              </label>
+              <button id="btn-get-roles" class="btn">Ler</button>
+              <button id="btn-set-roles" class="btn btn-primary">Salvar</button>
+              <span id="roles-msg" class="muted" role="status"></span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="dbz-spinner" class="dbz-spinner" aria-hidden="true"></div>
+  <script src="./env.js"></script>
+  <script type="module" src="./firebase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

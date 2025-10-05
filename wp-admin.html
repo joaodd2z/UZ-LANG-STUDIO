@@ -1,0 +1,294 @@
+<!-- Copyright — todos os direitos reservados a Henrique -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UZ-Lang Studio — WP-ADMIN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    .admin-grid { display:grid; grid-template-columns: 280px 1fr; gap:16px; }
+    .admin-sidebar { background:#0e0e0e; border:1px solid #1c1c1c; border-radius:12px; padding:12px; }
+    .admin-content { display:flex; flex-direction:column; gap:16px; }
+    .admin-header { display:flex; align-items:center; justify-content:space-between; }
+    .admin-title { font-size:20px; font-weight:700; }
+    .admin-actions { display:flex; gap:8px; }
+    .admin-nav button { width:100%; text-align:left; padding:10px; border-radius:8px; background:#121212; border:1px solid #1c1c1c; color:#eee; margin-bottom:8px; }
+    .admin-nav button.active { background:#1a1a1a; border-color:#DBA44A; color:#fff; }
+    .muted { color:#aaa; }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .list { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; }
+    .btn-outline { background:#121212; border:1px solid #2a2a2a; color:#eee; }
+    .badge { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:6px 10px; }
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0f0f0f; border:1px solid #1c1c1c; border-radius:8px; padding:8px; }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width:1200px; margin:0 auto; padding:16px;">
+    <div class="admin-header">
+      <div class="admin-title">WP-ADMIN</div>
+      <div class="admin-actions">
+        <a href="/" class="btn">Voltar ao App</a>
+        <button id="btn-signout" class="btn btn-outline">Sair (Firebase)</button>
+      </div>
+    </div>
+    <div class="admin-grid">
+      <aside class="admin-sidebar">
+        <div class="admin-nav">
+          <button data-panel="overview" class="active">Visão Geral</button>
+          <button data-panel="database">Banco de Dados</button>
+          <button data-panel="reports">Relatórios</button>
+          <button data-panel="users">Usuários & Permissões</button>
+          <button data-panel="config">Configurações</button>
+          <button data-panel="assets">Biblioteca</button>
+        </div>
+      </aside>
+      <main class="admin-content">
+        <section id="panel-overview" class="card">
+          <h2 class="h2">Visão Geral</h2>
+          <div class="grid-2">
+            <div class="badge">
+              <div class="muted">Projeto Firebase</div>
+              <div id="ov-project"></div>
+            </div>
+            <div class="badge">
+              <div class="muted">TTS</div>
+              <div id="ov-tts"></div>
+            </div>
+          </div>
+        </section>
+        <section id="panel-database" class="card" hidden>
+          <h2 class="h2">Banco de Dados</h2>
+          <div class="row">
+            <label class="field">
+              <span class="label">Coleção</span>
+              <select id="db-collection">
+                <option value="videos">videos</option>
+                <option value="jobs">jobs</option>
+                <option value="transcriptions">transcriptions</option>
+                <option value="translations">translations</option>
+                <option value="voices">voices</option>
+                <option value="glossary">glossary</option>
+                <option value="users">users</option>
+              </select>
+            </label>
+            <button id="btn-db-list" class="btn btn-primary">Listar documentos</button>
+            <span id="db-msg" class="muted"></span>
+          </div>
+          <div id="db-items" class="list"></div>
+        </section>
+        <section id="panel-reports" class="card" hidden>
+          <h2 class="h2">Relatórios</h2>
+          <div class="row">
+            <label class="field">
+              <span class="label">Tipo</span>
+              <select id="rep-type">
+                <option value="videos">Resumo de Vídeos</option>
+                <option value="jobs">Jobs em Andamento</option>
+                <option value="analytics">Analytics</option>
+              </select>
+            </label>
+            <button id="btn-rep-gen" class="btn btn-primary">Gerar</button>
+            <button id="btn-rep-pdf" class="btn">Exportar PDF</button>
+            <button id="btn-rep-xlsx" class="btn">Exportar Excel</button>
+            <button id="btn-rep-docx" class="btn">Exportar Word</button>
+            <span id="rep-msg" class="muted"></span>
+          </div>
+          <div id="rep-view" class="code" style="white-space:pre; overflow:auto; max-height:360px;"></div>
+        </section>
+        <section id="panel-users" class="card" hidden>
+          <h2 class="h2">Usuários & Permissões</h2>
+          <div class="row">
+            <label class="field">
+              <span class="label">UID</span>
+              <input id="role-uid" type="text" placeholder="Firebase UID" />
+            </label>
+            <label class="field" style="flex:1">
+              <span class="label">Roles (separadas por vírgula)</span>
+              <input id="role-roles" type="text" placeholder="ex: admin,editor" />
+            </label>
+            <button id="btn-get-roles" class="btn">Ler</button>
+            <button id="btn-set-roles" class="btn btn-primary">Salvar</button>
+            <span id="roles-msg" class="muted" role="status"></span>
+          </div>
+        </section>
+        <section id="panel-config" class="card" hidden>
+          <h2 class="h2">Configurações</h2>
+          <div class="row">
+            <label class="field" style="flex:1">
+              <span class="label">Base da API</span>
+              <input id="cfg-api-base" type="text" placeholder="ex: http://localhost:5001/demo-uz-lang/us-central1" />
+            </label>
+            <label class="field" style="max-width:240px">
+              <span class="label">TTS habilitado</span>
+              <select id="cfg-tts-enabled"><option value="false">false</option><option value="true">true</option></select>
+            </label>
+            <button id="btn-save-config" class="btn btn-primary">Salvar Config</button>
+            <span id="cfg-msg" class="muted"></span>
+          </div>
+        </section>
+        <section id="panel-assets" class="card" hidden>
+          <h2 class="h2">Biblioteca</h2>
+          <div class="row">
+            <label class="field">
+              <span class="label">Prefixo</span>
+              <input id="lib-prefix" type="text" placeholder="ex: subs/abc123/" />
+            </label>
+            <button id="btn-lib-list" class="btn">Listar</button>
+            <span id="lib-msg" class="muted"></span>
+          </div>
+          <div id="lib-items" class="list"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="./env.js"></script>
+  <script type="module" src="./firebase.js"></script>
+  <script type="module">
+    import { auth, db, storage } from './firebase.js';
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { listAll, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+
+    const panels = document.querySelectorAll('[id^="panel-"]');
+    document.querySelectorAll('.admin-nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.admin-nav button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        panels.forEach(p=>p.hidden = (p.id !== `panel-${btn.dataset.panel}`));
+      });
+    });
+
+    document.getElementById('ov-project').textContent = (auth.app?.options?.projectId)||'(defina FIREBASE_PROJECT_ID)';
+    document.getElementById('ov-tts').textContent = `TTS_ENABLED=${(window.env?.TTS_ENABLED)||'false'}`;
+
+    // Banco de dados
+    const elMsg = document.getElementById('db-msg');
+    const elItems = document.getElementById('db-items');
+    document.getElementById('btn-db-list').addEventListener('click', async ()=>{
+      const col = document.getElementById('db-collection').value;
+      elMsg.textContent = 'Carregando...';
+      try {
+        const snap = await getDocs(collection(db, col));
+        elItems.innerHTML = '';
+        for (const d of snap.docs) {
+          const div = document.createElement('div');
+          div.className = 'badge';
+          div.innerHTML = `<strong>${d.id}</strong><br/><span class="muted">${JSON.stringify(d.data()).slice(0,300)}</span>`;
+          elItems.appendChild(div);
+        }
+        elMsg.textContent = `Listados ${snap.size} documentos.`;
+      } catch(e) {
+        elMsg.textContent = 'Erro: '+(e.message||e);
+      }
+    });
+
+    // Relatórios (mock + export simples)
+    function genReport(type, docs){
+      if (type === 'videos') {
+        return 'ID;status;title\n' + docs.map(d=>`${d.id};${d.data().status||''};${d.data().title||''}`).join('\n');
+      }
+      if (type === 'jobs') {
+        return 'ID;status;type\n' + docs.map(d=>`${d.id};${d.data().status||''};${d.data().type||''}`).join('\n');
+      }
+      return 'metric;value\nvideos_total;'+docs.length;
+    }
+    function downloadBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); }
+
+    document.getElementById('btn-rep-gen').addEventListener('click', async ()=>{
+      const type = document.getElementById('rep-type').value;
+      const snap = await getDocs(collection(db, type==='videos'?'videos':'jobs'));
+      const data = genReport(type, snap.docs);
+      document.getElementById('rep-view').textContent = data;
+      document.getElementById('rep-msg').textContent = 'Relatório gerado.';
+    });
+    document.getElementById('btn-rep-pdf').addEventListener('click', ()=>{
+      const text = document.getElementById('rep-view').textContent||'';
+      const blob = new Blob([text], { type:'application/pdf' });
+      downloadBlob('relatorio.pdf', blob);
+    });
+    document.getElementById('btn-rep-xlsx').addEventListener('click', ()=>{
+      const text = document.getElementById('rep-view').textContent||'';
+      const blob = new Blob([text], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob('relatorio.xlsx', blob);
+    });
+    document.getElementById('btn-rep-docx').addEventListener('click', ()=>{
+      const text = document.getElementById('rep-view').textContent||'';
+      const blob = new Blob([text], { type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      downloadBlob('relatorio.docx', blob);
+    });
+
+    // Usuários (reaproveita endpoints já usados em app.js via /api/admin/*)
+    async function idToken(){ const u = auth.currentUser; if (!u) throw new Error('Faça login'); return await u.getIdToken(); }
+    document.getElementById('btn-get-roles').addEventListener('click', async ()=>{
+      try {
+        const uid = document.getElementById('role-uid').value.trim();
+        if (!uid) throw new Error('Informe UID');
+        const t = await idToken();
+        const r = await fetch('/api/admin/users/'+uid+'/roles', { headers: { 'Authorization': 'Bearer '+t } });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error||'Falha');
+        document.getElementById('role-roles').value = (j.roles||[]).join(',');
+        document.getElementById('roles-msg').textContent = 'Roles carregadas';
+      } catch(e){ document.getElementById('roles-msg').textContent = 'Erro: '+(e.message||e); }
+    });
+    document.getElementById('btn-set-roles').addEventListener('click', async ()=>{
+      try {
+        const uid = document.getElementById('role-uid').value.trim();
+        if (!uid) throw new Error('Informe UID');
+        const roles = document.getElementById('role-roles').value.split(',').map(s=>s.trim()).filter(Boolean);
+        const t = await idToken();
+        const r = await fetch('/api/admin/users/'+uid+'/roles', { method:'POST', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer '+t }, body: JSON.stringify({ roles }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error||'Falha');
+        document.getElementById('roles-msg').textContent = 'Roles atualizadas';
+      } catch(e){ document.getElementById('roles-msg').textContent = 'Erro: '+(e.message||e); }
+    });
+
+    // Config
+    document.getElementById('cfg-api-base').value = (window.env?.API_BASE)||'';
+    document.getElementById('cfg-tts-enabled').value = (window.env?.TTS_ENABLED)||'false';
+    document.getElementById('btn-save-config').addEventListener('click', async ()=>{
+      try {
+        const base = document.getElementById('cfg-api-base').value.trim();
+        const ttsEnabled = document.getElementById('cfg-tts-enabled').value === 'true';
+        const t = await idToken();
+        const r = await fetch('/api/admin/config', { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer '+t }, body: JSON.stringify({ apiBase: base, ttsEnabled }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error||'Falha ao salvar');
+        localStorage.setItem('APP_API_BASE', base);
+        localStorage.setItem('APP_TTS_ENABLED', String(ttsEnabled));
+        window.env = Object.assign({}, window.env, { API_BASE: base, TTS_ENABLED: String(ttsEnabled) });
+        document.getElementById('cfg-msg').textContent = 'Configurações salvas.';
+      } catch(e){ document.getElementById('cfg-msg').textContent = 'Erro: '+(e.message||e); }
+    });
+
+    // Biblioteca
+    document.getElementById('btn-lib-list').addEventListener('click', async ()=>{
+      const prefix = document.getElementById('lib-prefix').value.trim();
+      const el = document.getElementById('lib-items');
+      const msg = document.getElementById('lib-msg');
+      msg.textContent = 'Carregando...';
+      el.innerHTML = '';
+      try {
+        const l = await listAll(ref(storage, prefix||''));
+        for (const i of l.items) {
+          const url = await getDownloadURL(i);
+          const div = document.createElement('div');
+          div.className = 'badge';
+          div.innerHTML = `<strong>${i.name}</strong><br/><a href="${url}" target="_blank">Abrir</a>`;
+          el.appendChild(div);
+        }
+        msg.textContent = `Listados ${l.items.length} items.`;
+      } catch(e) {
+        msg.textContent = 'Erro: '+(e.message||e);
+      }
+    });
+
+    // Sair
+    document.getElementById('btn-signout').addEventListener('click', async ()=>{ await auth.signOut(); location.href = '/'; });
+  </script>
+</body>
+</html>

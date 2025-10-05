@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isLoggedIn() { return request.auth != null; }
+    function roles() { return isLoggedIn() && request.auth.token.roles != null ? request.auth.token.roles : []; }
+    function hasRole(r) { return isLoggedIn() && (r in roles()); }
+    function isAdmin() { return hasRole('admin'); }
+    function isEditor() { return hasRole('editor') || isAdmin(); }
+    function isViewer() { return hasRole('viewer'); }
+
+    // Public thumbnails
+    match /thumbs/{allPaths=**} {
+      allow read: if true;
+      allow write: if isEditor();
+    }
+
+    // Subtitles and dubs: leitura para logados; escrita para editor/admin
+    match /subs/{allPaths=**} {
+      allow read: if isLoggedIn();
+      allow write: if isEditor();
+    }
+    match /dubs/{allPaths=**} {
+      allow read: if isLoggedIn();
+      allow write: if isEditor();
+    }
+
+    // Transcripts (txt/json) leitura para logados; escrita editor/admin
+    match /transcripts/{allPaths=**} {
+      allow read: if isLoggedIn();
+      allow write: if isEditor();
+    }
+  }
+}

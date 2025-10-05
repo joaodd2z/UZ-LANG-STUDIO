@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  worker:
+    build: ./worker
+    env_file:
+      - .env
+    environment:
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - GOOGLE_CLOUD_PROJECT=${FIREBASE_PROJECT_ID}
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+      - FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST}
+      - FIREBASE_STORAGE_EMULATOR_HOST=${FIREBASE_STORAGE_EMULATOR_HOST}
+      - TTS_ENABLED=${TTS_ENABLED}
+      - TRANSLATE_PROVIDER=${TRANSLATE_PROVIDER}
+      - TRANSLATE_API_KEY=${TRANSLATE_API_KEY}
+      - TTS_PROVIDER=${TTS_PROVIDER}
+      - TTS_API_KEY=${TTS_API_KEY}
+      - TTS_VOICE_ID=${TTS_VOICE_ID}
+    volumes:
+      - ./worker:/app
+    restart: unless-stopped
