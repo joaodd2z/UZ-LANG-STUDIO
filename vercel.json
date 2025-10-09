@@ -1,7 +1,9 @@
 {
-  "public": "web",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://us-central1-demo-uz-lang.cloudfunctions.net/api/$1" },
-    { "source": "/wp-admin", "destination": "/wp-admin.html" }
-  ]
+    {
+      "source": "/api/(.*)",
+      "destination": "https://us-central1-uz-lang-studio.cloudfunctions.net/api/$1"
+    }
+  ],
+  "trailingSlash": false
 }
