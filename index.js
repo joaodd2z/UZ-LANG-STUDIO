@@ -1,4 +1,5 @@
 // Copyright — todos os direitos reservados a Henrique
+import "dotenv/config";
 import functions from "firebase-functions";
 import admin from "firebase-admin";
 import express from "express";
@@ -437,6 +438,7 @@ function getElevenApiKey() {
   return (
     functions.config().secret?.elevenlabs_api_key ||
     functions.config().elevenlabs?.api_key ||
+    process.env.TTS_API_KEY ||
     process.env.ELEVENLABS_API_KEY ||
     null
   );
@@ -571,14 +573,28 @@ app.post("/bridge/tts/generate", async (req, res) => {
       return res.status(403).json({ status: 'error', code: 'FORBIDDEN', message: 'sem permissão', uid: req.user?.uid||null, roles });
     }
     const { voice_profile_id, text, format = 'mp3', speed = 1.0, pitch = 0, project = 'default' } = req.body || {};
-    if (!voice_profile_id || !text) {
-      return res.status(400).json({ status: 'error', code:'INVALID_INPUT', message: 'voice_profile_id e text são obrigatórios' });
+    if (!text) {
+      return res.status(400).json({ status: 'error', code:'INVALID_INPUT', message: 'text é obrigatório' });
     }
 
-    // Resolver voice_id a partir do profile
-    const prof = await db.collection('voice_profiles').doc(voice_profile_id).get();
-    if (!prof.exists) return res.status(404).json({ status:'error', code:'PROFILE_NOT_FOUND', message:'perfil de voz não encontrado' });
-    const { voice_id } = prof.data();
+    // Resolver voice_id: profile -> env fallback
+    let voice_id = null;
+    if (voice_profile_id) {
+      const prof = await db.collection('voice_profiles').doc(voice_profile_id).get();
+      if (prof.exists) {
+        voice_id = prof.data()?.voice_id || null;
+      } else {
+        // Fallback para variável de ambiente se não encontrar o perfil
+        voice_id = process.env.TTS_VOICE_ID || null;
+        if (!voice_id) return res.status(404).json({ status:'error', code:'PROFILE_NOT_FOUND', message:'perfil de voz não encontrado e TTS_VOICE_ID ausente' });
+      }
+    } else {
+      voice_id = process.env.TTS_VOICE_ID || null;
+    }
+
+    if (!voice_id) {
+      return res.status(400).json({ status:'error', code:'VOICE_ID_NOT_RESOLVED', message:'Não foi possível resolver um voice_id. Configure voice_profile ou TTS_VOICE_ID.' });
+    }
 
     // Nota: SDK removido; usar REST
     const outputFormat = (format === 'ogg') ? 'ogg_44100' : (format === 'opus') ? 'opus_48000' : 'mp3_44100';
@@ -593,14 +609,14 @@ app.post("/bridge/tts/generate", async (req, res) => {
     // Upload em Firebase Storage
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET || admin.app().options.storageBucket;
     if (!bucketName) return res.status(500).json({ status:'error', code:'STORAGE_BUCKET_NOT_SET', message:'Bucket não configurado' });
-    const fileName = `bridge_tts/${project}/${voice_profile_id}/${Date.now()}.${format}`;
+    const fileName = `bridge_tts/${project}/${voice_profile_id||'env'}/${Date.now()}.${format}`;
     const bucket = storage.bucket(bucketName);
     const file = bucket.file(fileName);
     await file.save(audioBuffer, { resumable: false, contentType: (format==='mp3'?'audio/mpeg': format==='ogg'?'audio/ogg':'audio/opus') });
 
     const signedUrl = await generateV4SignedUrl(bucketName, fileName, 3600);
 
-    return res.json({ status:'ok', audio_url: signedUrl, duration_ms: null, voice_id, format });
+    return res.json({ status:'ok', audio_url: signedUrl, duration_ms: null, voice_id, format, voice_profile_id: voice_profile_id || null });
   } catch (e) {
     const status = e?.response?.status;
     const code = e.message?.includes('ELEVENLABS_API_KEY') ? 'AUTH_INVALID' : status === 429 ? 'RATE_LIMITED' : 'UNKNOWN';

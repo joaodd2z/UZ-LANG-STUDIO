@@ -10,7 +10,6 @@ service cloud.firestore {
     function hasRole(r) { return isLoggedIn() && (r in getRoles()); }
     function isAdmin() { return hasRole('admin'); }
     function isEditor() { return hasRole('editor') || isAdmin(); }
-    function isViewer() { return hasRole('viewer'); }
 
     match /users/{uid} {
       allow read: if isLoggedIn() && request.auth.uid == uid;
@@ -24,20 +23,17 @@ service cloud.firestore {
     }
 
     match /jobs/{jobId} {
-      // viewer pode ler, não pode escrever
       allow read: if isLoggedIn();
       allow create, update: if isEditor();
       allow delete: if isAdmin();
     }
 
-    // Novo: canais conectados
     match /channels/{channelId} {
       allow read: if isLoggedIn();
       allow create, update: if isEditor();
       allow delete: if isAdmin();
     }
 
-    // Novo: metadados/artefatos de transcrições (se usados no Firestore)
     match /transcripts/{videoId} {
       allow read: if isLoggedIn();
       allow create, update: if isEditor();

@@ -1,49 +1,82 @@
-// Copyright — todos os direitos reservados a Henrique
-// Firebase web bootstrap
+// web/firebase.js  (CDN – app estático)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, getDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { getStorage, ref, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut,
+  connectAuthEmulator, signInWithEmailAndPassword, createUserWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc,
+  connectFirestoreEmulator
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import {
+  getStorage,
+  connectStorageEmulator
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+import {
+  getAnalytics, isSupported as isAnalyticsSupported
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
 
-// TODO: preencher via environment/hosting headers se possível
+// === SUA CONFIG DO CONSOLE ===
 const firebaseConfig = {
-  apiKey: window.env?.FIREBASE_API_KEY || "",
-  authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "",
-  projectId: window.env?.FIREBASE_PROJECT_ID || "",
-  storageBucket: window.env?.FIREBASE_STORAGE_BUCKET || "",
-  appId: window.env?.FIREBASE_APP_ID || ""
+  apiKey: "AIzaSyBr7yRIyZZiQhIH0SMhlik-aJ6NZ1fWQLk",
+  authDomain: "uz-lang-studio.firebaseapp.com",
+  projectId: "uz-lang-studio",
+  // use o domínio clássico do bucket para evitar erro no SDK web:
+  storageBucket: "uz-lang-studio.appspot.com",
+  appId: "1:660818120099:web:699baf23f4ca3f3ec0de16",
+  messagingSenderId: "660818120099",
+  measurementId: "G-DMYB8NR9XQ"
 };
 
+// Init
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const provider = new GoogleAuthProvider();
 
-// Conectar aos Emulators automaticamente em dev
-try {
-  const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-  if (isLocal) {
-    // Ports from firebase.json emulators
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    connectStorageEmulator(storage, 'localhost', 9199);
-    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-    console.log('[Firebase] Emulators conectados (Firestore:8080, Storage:9199, Auth:9099)');
-  }
-} catch (e) {
-  console.warn('Falha ao conectar emulators:', e);
+// Emuladores no dev
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  const host = location.hostname; // preserva o host atual
+  try { connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true }); } catch {}
+  try { connectFirestoreEmulator(db, host, 8080); } catch {}
+  try { connectStorageEmulator(storage, host, 9199); } catch {}
+  console.log(`[Firebase] Emulators conectados em ${host} (Auth:9099, Firestore:8080, Storage:9199)`);
 }
 
-export const provider = new GoogleAuthProvider();
-export async function signin() { await signInWithPopup(auth, provider); }
+// Helpers de auth
+export async function signin() {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    console.warn("Popup falhou, tentando redirect...", err?.message);
+    await signInWithRedirect(auth, provider);
+  }
+}
 export async function signout() { await signOut(auth); }
 export function watchAuth(cb) { return onAuthStateChanged(auth, cb); }
 
+// Roles (Firestore)
 export async function getUserRoles(uid) {
   if (!uid) return [];
   try {
-    const uref = doc(db, "users", uid);
-    const usnap = await getDoc(uref);
-    const roles = usnap.exists() ? (usnap.data().roles || []) : [];
-    return roles;
-  } catch (e) { return []; }
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? (snap.data().roles || []) : [];
+  } catch { return []; }
 }
+
+// Login de dev (emulador) por email/senha
+export async function devSignin(email, password) {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    if (e && e.code === "auth/user-not-found") {
+      await createUserWithEmailAndPassword(auth, email, password);
+    } else {
+      throw e;
+    }
+  }
+}
+
+// Analytics opcional
+isAnalyticsSupported().then((ok) => { if (ok) try { getAnalytics(app); } catch {} });

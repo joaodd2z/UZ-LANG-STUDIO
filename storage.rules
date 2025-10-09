@@ -6,7 +6,6 @@ service firebase.storage {
     function hasRole(r) { return isLoggedIn() && (r in roles()); }
     function isAdmin() { return hasRole('admin'); }
     function isEditor() { return hasRole('editor') || isAdmin(); }
-    function isViewer() { return hasRole('viewer'); }
 
     // Public thumbnails
     match /thumbs/{allPaths=**} {

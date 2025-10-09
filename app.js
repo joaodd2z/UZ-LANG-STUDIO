@@ -1,11 +1,16 @@
 // Copyright — todos os direitos reservados a Henrique
 import { auth, signin, signout, db, storage, getUserRoles } from './firebase.js';
-import { collection, onSnapshot, query, orderBy, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { collection, onSnapshot, query, orderBy, limit, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { getDownloadURL, ref, listAll } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
 const tabs = document.querySelectorAll('#tabs .tab');
 const views = document.querySelectorAll('.view');
 const content = document.getElementById('content');
+
+// BASE da API: em localhost usamos rewrites ("/api" via Hosting), em produção Cloud Functions absoluto
+const API_BASE = (location.hostname === "localhost" || location.hostname.startsWith("127."))
+  ? ''
+  : "https://us-central1-uz-lang-studio.cloudfunctions.net";
 
 // Ink underline element for tabs
 const nav = document.getElementById('tabs');
@@ -97,6 +102,14 @@ auth.onAuthStateChanged(async (user) => {
     btnSignin.hidden = true; btnSignout.hidden = false;
     userInfo.textContent = user.displayName || user.email;
     currentRoles = await getUserRoles(user.uid);
+    // Dev bootstrap de roles no emulador: se sem roles, atribui admin/editor
+    if ((location.hostname === "localhost" || location.hostname === "127.0.0.1") && (!currentRoles.length)) {
+      try {
+        await setDoc(doc(db, "users", user.uid), { roles: ["admin", "editor"], updatedAt: new Date().toISOString() }, { merge: true });
+        currentRoles = ["admin", "editor"];
+        showToast("Roles de dev aplicadas: admin/editor", "success");
+      } catch {}
+    }
     document.getElementById('roles-alert').hidden = currentRoles.includes('admin') || currentRoles.includes('editor');
     document.getElementById('channel-admin')?.removeAttribute('hidden');
   } else {
@@ -599,6 +612,7 @@ if (viewVoices) {
     </div>
     <div class="row">
       <button id="btn-voice-add" class="btn btn-primary">Clonar voz (ElevenLabs)</button>
+      <button id="btn-tts-dev" class="btn">Gerar TTS (DEV)</button>
       <button id="btn-voices-refresh" class="btn">Atualizar lista</button>
       <span id="voice-msg" class="muted"></span>
     </div>
@@ -609,7 +623,7 @@ if (viewVoices) {
   viewVoices.appendChild(card);
 
   // Helper para base da API
-  function apiUrl(path){ const base = (window.env?.API_BASE)||''; return base ? `${base}${path}` : path; }
+  function apiUrl(path){ const base = (window.env?.API_BASE ?? API_BASE)||''; return base ? `${base}${path}` : path; }
   function parseTrainingFiles(){
     const lines = (document.getElementById('voice-files').value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
     return lines.map(s => s.startsWith('http') ? { url: s } : { storagePath: s });
@@ -679,6 +693,22 @@ if (viewVoices) {
   }
 
   document.getElementById('btn-voices-refresh')?.addEventListener('click', fetchVoices);
+  document.getElementById('btn-tts-dev')?.addEventListener('click', async () => {
+    try {
+      const user = auth.currentUser; if (!user) return showToast('Faça login','error');
+      const idToken = await user.getIdToken();
+      const r = await fetch(apiUrl('/api/bridge/tts/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({ text: 'Teste de TTS EN', format: 'mp3', project: 'default' })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || 'Falha ao gerar TTS');
+      showToast('TTS gerado! Abra Biblioteca para baixar.', 'success');
+    } catch (e) {
+      showToast(e.message || 'Erro ao gerar TTS', 'error');
+    }
+  });
 
   // Gate de consentimento
   const btnClone = document.getElementById('btn-voice-add');
@@ -757,7 +787,7 @@ if (viewLibrary) {
     const grid = document.getElementById('lib-items');
     if (!id) { showToast('Informe o ID do vídeo','error'); return; }
     msg.textContent = 'Listando...'; grid.innerHTML = '';
-    const prefixes = [`subs/${id}/`, `transcripts/${id}/`, `dubs/${id}/`, `thumbs/`];
+    const prefixes = [`subs/${id}/`, `transcripts/${id}/`, `dubs/${id}/`, `thumbs/`, `bridge_tts/default/env/`];
     let items = [];
     for (const p of prefixes) {
       const arr = await listPrefix(p);
